@@ -50,13 +50,25 @@ if uploaded_files:
                 # Store processed data
                 processed_dfs[dataset_name] = dedup_df
 
+
         # Data Cleansing
         if st.sidebar.checkbox("Data Cleansing"):
             for dataset_name in selected_datasets:
                 st.subheader(f"Data Cleansing for {dataset_name}")
                 df = processed_dfs.get(dataset_name, next(df for name, df in dfs if name == dataset_name))
                 
-                # Fill missing values with 0
+                # Drop columns with more than 50% missing values
+                missing_threshold = 0.5
+                missing_percentages = df.isnull().mean()
+                columns_to_drop = missing_percentages[missing_percentages > missing_threshold].index
+                df = df.drop(columns=columns_to_drop)
+                st.write(f"Dropped columns with more than 50% missing values: {list(columns_to_drop)}")
+
+                # Drop rows with any missing values
+                df = df.dropna()
+                st.write(f"Dropped rows with missing values. Remaining rows: {len(df)}")
+                
+                # Fill remaining missing values with 0
                 filled_df = df.fillna(0)
                         
                 # Replace negative values with 0
@@ -158,6 +170,7 @@ if uploaded_files:
                 except Exception as e:
                     st.error(f"Error during merging: {e}")
                     
+                    
 
         # Data Derivation
         if st.sidebar.checkbox("Data Derivation"):
@@ -165,15 +178,20 @@ if uploaded_files:
                 st.subheader(f"Data Derivation for {dataset_name}")
                 df = processed_dfs.get(dataset_name, next(df for name, df in dfs if name == dataset_name))
                 numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+                
                 if len(numeric_cols) < 2:
                     st.warning("Not enough numeric columns to perform derivation.")
                 else:
                     col1 = st.selectbox(f"Select first column ({dataset_name})", numeric_cols, key=f"{dataset_name}_col1")
                     col2 = st.selectbox(f"Select second column ({dataset_name})", numeric_cols, key=f"{dataset_name}_col2")
-                    operation = st.selectbox("Select operation", ["Add", "Subtract", "Multiply", "Divide"])
-                    if st.button(f"Apply Derivation on {dataset_name}"):
+                    operation = st.selectbox("Select operation", ["Add", "Subtract", "Multiply", "Divide"], key=f"{dataset_name}_operation")
+                    
+                    if st.button(f"Apply Derivation on {dataset_name}", key=f"{dataset_name}_apply"):
                         try:
+                            # Define new column name
                             new_col_name = f"{col1}_{operation.lower()}_{col2}"
+                            
+                            # Perform selected operation
                             if operation == "Add":
                                 df[new_col_name] = df[col1] + df[col2]
                             elif operation == "Subtract":
@@ -182,26 +200,62 @@ if uploaded_files:
                                 df[new_col_name] = df[col1] * df[col2]
                             elif operation == "Divide":
                                 df[new_col_name] = df[col1] / df[col2].replace(0, float('nan'))
+                                df[new_col_name] = df[new_col_name].fillna(0)  # Handle division by zero
+                            
+                            # Show the updated dataframe to the user
+                            st.success(f"New column '{new_col_name}' added successfully!")
                             st.write(df)
+
+                            # Provide an option to save the changes
+                            if st.checkbox(f"Save changes for {dataset_name}", key=f"{dataset_name}_save"):
+                                processed_dfs[dataset_name] = df
+                                st.success(f"Changes saved for {dataset_name}.")
+                            else:
+                                st.warning("Changes not saved. Check 'Save changes' to persist changes.")
                         except Exception as e:
                             st.error(f"Error: {e}")
+
 
         # Data Aggregation
         if st.sidebar.checkbox("Data Aggregation"):
             for dataset_name in selected_datasets:
                 st.subheader(f"Data Aggregation for {dataset_name}")
                 df = processed_dfs.get(dataset_name, next(df for name, df in dfs if name == dataset_name))
+                
+                # Select column to group by
                 group_by_col = st.selectbox(f"Select a column to group by ({dataset_name})", df.columns, key=f"groupby_{dataset_name}")
+                
+                # Select numeric columns to aggregate
                 numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
                 agg_cols = st.multiselect(f"Select columns to aggregate ({dataset_name})", numeric_cols, key=f"aggcols_{dataset_name}")
-                agg_funcs = st.multiselect("Select aggregation functions", ["sum", "mean", "min", "max"])
-                if st.button(f"Perform Aggregation for {dataset_name}"):
-                    if not agg_cols or not agg_funcs:
-                        st.warning("Please select at least one column and one aggregation function.")
+                
+                # Select aggregation functions
+                available_funcs = ["sum", "mean", "min", "max"]
+                agg_dict = {}
+                
+                for col in agg_cols:
+                    func = st.selectbox(f"Select aggregation function for {col} ({dataset_name})", available_funcs, key=f"aggfunc_{dataset_name}_{col}")
+                    agg_dict[col] = func
+                
+                # Perform aggregation
+                if st.button(f"Perform Aggregation for {dataset_name}", key=f"agg_button_{dataset_name}"):
+                    if not group_by_col or not agg_dict:
+                        st.warning("Please select a group-by column and at least one column with an aggregation function.")
                     else:
-                        agg_dict = {col: agg_funcs for col in agg_cols}
-                        aggregated_df = df.groupby(group_by_col).agg(agg_dict).reset_index()
-                        st.write(aggregated_df)
+                        try:
+                            # Perform aggregation
+                            aggregated_df = df.groupby(group_by_col).agg(agg_dict).reset_index()
+                            st.success(f"Aggregation completed for {dataset_name}.")
+                            st.write(aggregated_df)
+                            
+                            # Provide an option to save the aggregated results
+                            if st.checkbox(f"Save Aggregated Data for {dataset_name}", key=f"save_agg_{dataset_name}"):
+                                processed_dfs[dataset_name] = aggregated_df
+                                st.success(f"Aggregated data saved for {dataset_name}.")
+                        except Exception as e:
+                            st.error(f"Error during aggregation: {e}")
+
+
 
         # Descriptive Statistics
         if st.sidebar.checkbox("Descriptive Statistics"):
