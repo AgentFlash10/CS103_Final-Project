@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-st.title("CS103 Final Project")
+st.title("Data Master: All-in-One Data Analysis Toolkit")
 
 # Initialize an empty list to store datasets and their names
 dfs = []
@@ -69,6 +69,8 @@ if uploaded_files:
                 # Store processed data
                 processed_dfs[dataset_name] = filled_df
 
+
+
         # Format Revision
         if st.sidebar.checkbox("Format Revision"):
             for dataset_name in selected_datasets:
@@ -79,48 +81,83 @@ if uploaded_files:
                 st.write("Original Data Types:")
                 st.write(df.dtypes)
 
-                column_to_convert = st.selectbox(f"Select column to change data type ({dataset_name})", df.columns, key=f"convert_{dataset_name}")
+                # Allow multiple column selection
+                columns_to_convert = st.multiselect(f"Select columns to change data type ({dataset_name})", df.columns, key=f"convert_columns_{dataset_name}")
+                
+                # Select target data type
                 data_type = st.selectbox(f"Select target data type ({dataset_name})", ["int", "float", "str", "datetime"], key=f"type_{dataset_name}")
                 
-                if st.button(f"Convert Column for {dataset_name}", key=f"convert_btn_{dataset_name}"):
+                if st.button(f"Convert Selected Columns for {dataset_name}", key=f"convert_btn_{dataset_name}"):
                     try:
-                        # Show the original data type of the selected column
-                        original_dtype = df[column_to_convert].dtype
-                        st.write(f"Original Data Type of {column_to_convert}: {original_dtype}")
+                        # Loop over each selected column
+                        for column_to_convert in columns_to_convert:
+                            # Show the original data type of the selected column
+                            original_dtype = df[column_to_convert].dtype
+                            st.write(f"Original Data Type of {column_to_convert}: {original_dtype}")
 
-                        # Perform conversion based on selected type
-                        if data_type == "int":
-                            df[column_to_convert] = pd.to_numeric(df[column_to_convert], errors="coerce").astype("Int64")
-                        elif data_type == "float":
-                            df[column_to_convert] = pd.to_numeric(df[column_to_convert], errors="coerce")
-                        elif data_type == "str":
-                            df[column_to_convert] = df[column_to_convert].astype(str)
-                        elif data_type == "datetime":
-                            df[column_to_convert] = pd.to_datetime(df[column_to_convert], errors="coerce")
+                            # Perform conversion based on selected type
+                            if data_type == "int":
+                                df[column_to_convert] = pd.to_numeric(df[column_to_convert], errors="coerce").astype("Int64")
+                            elif data_type == "float":
+                                df[column_to_convert] = pd.to_numeric(df[column_to_convert], errors="coerce")
+                            elif data_type == "str":
+                                df[column_to_convert] = df[column_to_convert].astype(str)
+                            elif data_type == "datetime":
+                                df[column_to_convert] = pd.to_datetime(df[column_to_convert], errors="coerce")
 
-                        # Show updated data type of the selected column
-                        updated_dtype = df[column_to_convert].dtype
-                        st.write(f"Updated Data Type of {column_to_convert}: {updated_dtype}")
+                            # Show updated data type of the selected column
+                            updated_dtype = df[column_to_convert].dtype
+                            st.write(f"Updated Data Type of {column_to_convert}: {updated_dtype}")
+
+                        # Save the updated dataset back to processed_dfs
+                        processed_dfs[dataset_name] = df
+
+                        # Display the updated dataset
+                        st.write("Updated Dataset:")
+                        st.write(df)
                         
                     except Exception as e:
                         st.error(f"Error: {e}")
 
+
         # Merging/Joining
-        if len(dfs) > 1 and st.sidebar.checkbox("Merge Datasets"):
+        if len(dfs) > 1 and st.sidebar.checkbox("Merge/Join Datasets"):
             st.subheader("Merge Datasets")
             dataset1 = st.selectbox("Select First Dataset", dataset_options, key="merge_dataset1")
             dataset2 = st.selectbox("Select Second Dataset", [name for name in dataset_options if name != dataset1], key="merge_dataset2")
             df1 = processed_dfs.get(dataset1, next(df for name, df in dfs if name == dataset1))
             df2 = processed_dfs.get(dataset2, next(df for name, df in dfs if name == dataset2))
+
+            # Select columns to join on with dataset previews
             join_column1 = st.selectbox(f"Select join column from {dataset1}", df1.columns)
+            st.write(f"Dataset: {dataset1} - Full Data:")
+            st.write(df1)
+
             join_column2 = st.selectbox(f"Select join column from {dataset2}", df2.columns)
+            st.write(f"Dataset: {dataset2} - Full Data:")
+            st.write(df2)
+
             join_method = st.selectbox("Select join method", ["inner", "left", "right", "outer"])
+
+            # Merge with full dataset display
             if st.button("Merge Datasets"):
                 try:
                     merged_df = pd.merge(df1, df2, how=join_method, left_on=join_column1, right_on=join_column2)
+                    st.success("Datasets merged successfully!")
+                    
+                    # Display full merged result
+                    st.write("Merged Dataset:")
                     st.write(merged_df)
+
+                    # Option to save the merged dataset
+                    if st.checkbox("Save Merged Dataset"):
+                        new_dataset_name = st.text_input("Enter name for the merged dataset", f"Merged_{dataset1}_{dataset2}")
+                        if new_dataset_name:
+                            processed_dfs[new_dataset_name] = merged_df
+                            st.success(f"Merged dataset saved as '{new_dataset_name}'!")
                 except Exception as e:
-                    st.error(f"Error: {e}")
+                    st.error(f"Error during merging: {e}")
+                    
 
         # Data Derivation
         if st.sidebar.checkbox("Data Derivation"):
