@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-st.title("Data Master: All-in-One Data Analysis Toolkit")
+st.title("Pineapple Under the Sea")
 
 # Initialize an empty list to store datasets and their names
 dfs = []
@@ -137,38 +137,38 @@ if uploaded_files:
             st.subheader("Merge Datasets")
             dataset1 = st.selectbox("Select First Dataset", dataset_options, key="merge_dataset1")
             dataset2 = st.selectbox("Select Second Dataset", [name for name in dataset_options if name != dataset1], key="merge_dataset2")
+            
             df1 = processed_dfs.get(dataset1, next(df for name, df in dfs if name == dataset1))
             df2 = processed_dfs.get(dataset2, next(df for name, df in dfs if name == dataset2))
 
-            # Select columns to join on with dataset previews
-            join_column1 = st.selectbox(f"Select join column from {dataset1}", df1.columns)
             st.write(f"Dataset: {dataset1} - Full Data:")
             st.write(df1)
 
-            join_column2 = st.selectbox(f"Select join column from {dataset2}", df2.columns)
             st.write(f"Dataset: {dataset2} - Full Data:")
             st.write(df2)
 
-            join_method = st.selectbox("Select join method", ["inner", "left", "right", "outer"])
-
-            # Merge with full dataset display
             if st.button("Merge Datasets"):
                 try:
-                    merged_df = pd.merge(df1, df2, how=join_method, left_on=join_column1, right_on=join_column2)
-                    st.success("Datasets merged successfully!")
-                    
-                    # Display full merged result
-                    st.write("Merged Dataset:")
-                    st.write(merged_df)
+                    # Check if datasets have the same structure
+                    if list(df1.columns) == list(df2.columns):
+                        merged_df = pd.concat([df1, df2], ignore_index=True)
+                        st.success("Datasets merged successfully.")
+                        
+                        # Display the full merged result
+                        st.write("Merged Dataset:")
+                        st.write(merged_df)
 
-                    # Option to save the merged dataset
-                    if st.checkbox("Save Merged Dataset"):
-                        new_dataset_name = st.text_input("Enter name for the merged dataset", f"Merged_{dataset1}_{dataset2}")
-                        if new_dataset_name:
-                            processed_dfs[new_dataset_name] = merged_df
-                            st.success(f"Merged dataset saved as '{new_dataset_name}'!")
+                        # Option to save the merged dataset
+                        if st.checkbox("Save Merged Dataset"):
+                            new_dataset_name = st.text_input("Enter name for the merged dataset", f"Merged_{dataset1}_{dataset2}")
+                            if new_dataset_name:
+                                processed_dfs[new_dataset_name] = merged_df
+                                st.success(f"Merged dataset saved as '{new_dataset_name}'!")
+                    else:
+                        st.error("Datasets have different structures. Please ensure both datasets have identical columns to merge.")
                 except Exception as e:
                     st.error(f"Error during merging: {e}")
+
                     
                     
 
