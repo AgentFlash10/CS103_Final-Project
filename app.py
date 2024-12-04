@@ -152,7 +152,7 @@ if uploaded_files:
                     # Check if datasets have the same structure
                     if list(df1.columns) == list(df2.columns):
                         merged_df = pd.concat([df1, df2], ignore_index=True)
-                        st.success("Datasets merged successfully based on structure!")
+                        st.success("Datasets merged successfully.")
                         
                         # Automatically sort by the first column in ascending order
                         default_sort_column = merged_df.columns[0]  # Selects the first column
