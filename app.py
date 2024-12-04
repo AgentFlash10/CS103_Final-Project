@@ -152,26 +152,30 @@ if uploaded_files:
                     # Check if datasets have the same structure
                     if list(df1.columns) == list(df2.columns):
                         merged_df = pd.concat([df1, df2], ignore_index=True)
-                        st.success("Datasets merged successfully.")
+                        st.success("Datasets merged successfully based on structure!")
                         
-                        # Display the full merged result
-                        st.write("Merged Dataset:")
+                        # Automatically sort by the first column in ascending order
+                        default_sort_column = merged_df.columns[0]  # Selects the first column
+                        merged_df = merged_df.sort_values(by=default_sort_column, ascending=True)
+
+                        # Display the merged and sorted dataset
+                        st.write(f"Merged (by '{default_sort_column}' in ascending order):")
                         st.write(merged_df)
 
-                        # Option to save the merged dataset
+                        # Option to save the sorted dataset
                         if st.checkbox("Save Merged Dataset"):
                             new_dataset_name = st.text_input("Enter name for the merged dataset", f"Merged_{dataset1}_{dataset2}")
                             if new_dataset_name:
                                 processed_dfs[new_dataset_name] = merged_df
-                                st.success(f"Merged dataset saved as '{new_dataset_name}'!")
+                                st.success(f"Merged and sorted dataset saved as '{new_dataset_name}'!")
                     else:
                         st.error("Datasets have different structures. Please ensure both datasets have identical columns to merge.")
                 except Exception as e:
                     st.error(f"Error during merging: {e}")
 
-                    
-                    
 
+
+                  
         # Data Derivation
         if st.sidebar.checkbox("Data Derivation"):
             for dataset_name in selected_datasets:
